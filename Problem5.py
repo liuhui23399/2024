@@ -326,91 +326,102 @@ class Problem5SpeedOptimization:
     
     def visualize_speed_analysis(self, spiral_analysis, global_max_speed):
         """
-        可视化速度分析结果
+        可视化速度分析结果 - 4个子图完整分析
         """
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
         
-        theta_values = spiral_analysis['theta']
-        curvature_values = spiral_analysis['curvature']
-        max_speeds = spiral_analysis['max_head_speed']
+        # 1. 螺线路径上的最大允许速度分布
+        ax1.plot(spiral_analysis['theta'], spiral_analysis['max_head_speed'], 'b-o', linewidth=2, markersize=4)
+        ax1.axhline(y=global_max_speed, color='r', linestyle='--', linewidth=2,
+                   label=f'全局最大速度 = {global_max_speed:.4f} m/s')
+        ax1.set_xlabel('角度 θ (弧度)', fontsize=12)
+        ax1.set_ylabel('最大允许龙头速度 (m/s)', fontsize=12)
+        ax1.set_title('沿螺线的最大允许速度分布', fontsize=14, fontweight='bold')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
         
-        # 1. 螺线路径与曲率
-        ax1.set_title('螺线路径与曲率分布', fontsize=14, fontweight='bold')
+        # 标记瓶颈点
+        min_speed_idx = spiral_analysis['max_head_speed'].idxmin()
+        bottleneck = spiral_analysis.iloc[min_speed_idx]
+        ax1.scatter(bottleneck['theta'], bottleneck['max_head_speed'], 
+                   color='red', s=100, marker='*', zorder=5)
         
-        # 绘制螺线路径
-        a = self.spiral_pitch / (2 * np.pi)
+        # 2. 曲率分布
+        ax2.plot(spiral_analysis['theta'], spiral_analysis['curvature'], 'g-o', linewidth=2, markersize=4)
+        ax2.set_xlabel('角度 θ (弧度)', fontsize=12)
+        ax2.set_ylabel('曲率 (1/m)', fontsize=12)
+        ax2.set_title('螺线曲率分布', fontsize=14, fontweight='bold')
+        ax2.grid(True, alpha=0.3)
+        
+        # 标记最大曲率点
+        max_curvature_idx = spiral_analysis['curvature'].idxmax()
+        max_curvature_point = spiral_analysis.iloc[max_curvature_idx]
+        ax2.scatter(max_curvature_point['theta'], max_curvature_point['curvature'], 
+                   color='red', s=100, marker='*', zorder=5, label='最大曲率点')
+        ax2.legend()
+        
+        # 3. 螺线轨迹和速度标注
+        # 计算螺线轨迹坐标
         x_coords = []
         y_coords = []
-        
-        for theta in theta_values:
-            r = a * theta
-            x = r * np.cos(theta)
-            y = r * np.sin(theta)
+        for _, row in spiral_analysis.iterrows():
+            r, x, y = self.spiral_equation(row['theta'], is_outward=False)
             x_coords.append(x)
             y_coords.append(y)
         
-        # 用曲率着色
-        scatter = ax1.scatter(x_coords, y_coords, c=curvature_values, 
-                            cmap='viridis', s=20, alpha=0.7)
-        ax1.set_xlabel('X坐标 (m)')
-        ax1.set_ylabel('Y坐标 (m)')
-        ax1.set_aspect('equal')
-        ax1.grid(True, alpha=0.3)
+        ax3.plot(x_coords, y_coords, 'b-', linewidth=2, label='螺线轨迹')
         
-        # 添加颜色条
-        cbar1 = plt.colorbar(scatter, ax=ax1)
-        cbar1.set_label('曲率 (1/m)')
+        # 标注速度瓶颈点
+        bottleneck_r, bottleneck_x, bottleneck_y = self.spiral_equation(bottleneck['theta'], is_outward=False)
+        ax3.scatter(bottleneck_x, bottleneck_y, color='red', s=200, marker='*', 
+                   label=f'速度瓶颈点: {bottleneck["max_head_speed"]:.4f} m/s')
         
-        # 2. 曲率随角度变化
-        ax2.plot(theta_values, curvature_values, 'b-', linewidth=2)
-        ax2.set_title('曲率沿螺线角度的变化', fontsize=14, fontweight='bold')
-        ax2.set_xlabel('螺线角度 θ (rad)')
-        ax2.set_ylabel('曲率 κ (1/m)')
-        ax2.grid(True, alpha=0.3)
+        # 调头空间边界
+        circle = plt.Circle((0, 0), self.turnaround_radius, fill=False, color='red', 
+                           linestyle='--', linewidth=2, label='调头空间边界')
+        ax3.add_patch(circle)
         
-        # 标记最高曲率点
-        max_curvature_idx = np.argmax(curvature_values)
-        ax2.scatter(theta_values.iloc[max_curvature_idx], curvature_values.iloc[max_curvature_idx], 
-                   color='red', s=100, zorder=5, label='最大曲率点')
-        ax2.legend()
-        
-        # 3. 允许的最大龙头速度
-        ax3.plot(theta_values, max_speeds, 'g-', linewidth=2, label='最大允许速度')
-        ax3.axhline(y=global_max_speed, color='red', linestyle='--', linewidth=2, 
-                   label=f'全局最大速度: {global_max_speed:.4f} m/s')
-        ax3.set_title('最大允许龙头速度分布', fontsize=14, fontweight='bold')
-        ax3.set_xlabel('螺线角度 θ (rad)')
-        ax3.set_ylabel('速度 (m/s)')
-        ax3.grid(True, alpha=0.3)
+        ax3.set_xlabel('X坐标 (m)', fontsize=12)
+        ax3.set_ylabel('Y坐标 (m)', fontsize=12)
+        ax3.set_title('螺线轨迹与速度分析', fontsize=14, fontweight='bold')
         ax3.legend()
+        ax3.grid(True, alpha=0.3)
+        ax3.axis('equal')
         
-        # 标记瓶颈位置
-        min_speed_idx = np.argmin(max_speeds)
-        ax3.scatter(theta_values.iloc[min_speed_idx], max_speeds.iloc[min_speed_idx], 
-                   color='red', s=100, zorder=5)
+        # 4. 各把手速度对比（在瓶颈点）
+        bottleneck_speeds = self.calculate_speed_ratios(bottleneck['theta'], bottleneck['max_head_speed'])
         
-        # 4. 速度放大因子分析
-        amplification_factors = []
+        handles = list(bottleneck_speeds.keys())
+        speeds = list(bottleneck_speeds.values())
         
-        for i, theta in enumerate(theta_values):
-            speeds = self.calculate_speed_ratios(theta, 1.0)
-            max_handle_speed = max([v for k, v in speeds.items() if k != 'Head'])
-            amplification_factors.append(max_handle_speed)
+        # 设置颜色：龙头为红色，其他为蓝色
+        colors = ['red' if handle == 'Head' else 'blue' for handle in handles]
+        bars = ax4.bar(range(len(handles)), speeds, color=colors, alpha=0.7)
         
-        ax4.plot(theta_values, amplification_factors, 'purple', linewidth=2)
-        ax4.axhline(y=2.0, color='red', linestyle='--', alpha=0.7, 
-                   label='速度限制 (2 m/s)')
-        ax4.set_title('速度放大因子 (龙头1m/s时)', fontsize=14, fontweight='bold')
-        ax4.set_xlabel('螺线角度 θ (rad)')
-        ax4.set_ylabel('最大把手速度 (m/s)')
-        ax4.grid(True, alpha=0.3)
+        # 添加速度上限线
+        ax4.axhline(y=self.max_handle_speed, color='red', linestyle='--', linewidth=2,
+                   label=f'速度上限 = {self.max_handle_speed} m/s')
+        
+        ax4.set_xlabel('把手位置', fontsize=12)
+        ax4.set_ylabel('速度 (m/s)', fontsize=12)
+        ax4.set_title(f'瓶颈点各把手速度分布\n(龙头速度 = {bottleneck["max_head_speed"]:.4f} m/s)', 
+                     fontsize=14, fontweight='bold')
+        ax4.set_xticks(range(len(handles)))
+        ax4.set_xticklabels(handles, rotation=45, fontsize=10)
         ax4.legend()
+        ax4.grid(True, alpha=0.3)
+        
+        # 在每个柱子上添加数值标签
+        for i, (bar, speed) in enumerate(zip(bars, speeds)):
+            height = bar.get_height()
+            ax4.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                    f'{speed:.3f}', ha='center', va='bottom', fontsize=9)
         
         plt.tight_layout()
         plt.savefig('problem5_speed_analysis.png', dpi=300, bbox_inches='tight')
         plt.show()
         
-        print("可视化图表已保存到 problem5_speed_analysis.png")
+        print("完整可视化图表已保存到 problem5_speed_analysis.png")
 
 # Run Problem 5 solution
 if __name__ == "__main__":
