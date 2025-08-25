@@ -283,8 +283,8 @@ class Problem3Solution:
             
             # 保存结果
             results_df = pd.DataFrame(results)
-            results_df.to_excel('results3.xlsx', index=False)
-            print(f"详细结果已保存到 results3.xlsx")
+            results_df.to_csv('result3.csv', index=False)
+            print(f"详细结果已保存到 result3.csv")
             
             return min_pitch
         else:

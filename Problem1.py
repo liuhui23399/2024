@@ -230,14 +230,25 @@ class Problem1DetailedModel:
         velocity_df = self.calculate_all_velocities(time_points)
         print(velocity_df.round(3))
         
-        print("\nStep 4: Save results to Excel file")
-        with pd.ExcelWriter('result1.xlsx', engine='openpyxl') as writer:
-            position_df.to_excel(writer, sheet_name='Position_Results', index=False)
-            velocity_df.to_excel(writer, sheet_name='Velocity_Results', index=False)
+        print("\nStep 4: Combine and save results to single CSV file")
         
-        print("Results saved to result1.xlsx")
+        # Combine position and velocity data into one dataframe
+        combined_df = position_df.copy()
         
-        return position_df, velocity_df
+        # Add velocity columns to the combined dataframe
+        velocity_columns = ['Head(m/s)', 'Body_Seg1(m/s)', 'Body_Seg51(m/s)', 
+                           'Body_Seg101(m/s)', 'Body_Seg151(m/s)', 'Body_Seg201(m/s)', 'Tail(m/s)']
+        
+        for col in velocity_columns:
+            if col in velocity_df.columns:
+                combined_df[col] = velocity_df[col]
+        
+        # Save combined results
+        combined_df.to_csv('result1.csv', index=False)
+        
+        print("Combined results saved to result1.csv")
+        
+        return combined_df
     
     def visualize_solution(self, time_points=None):
         """
@@ -310,7 +321,7 @@ if __name__ == "__main__":
     model = Problem1DetailedModel()
     
     # Solve Problem 1
-    pos_df, vel_df = model.solve_problem1()
+    combined_df = model.solve_problem1()
     
     # Visualize results  
     model.visualize_solution()
